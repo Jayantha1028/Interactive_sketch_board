@@ -1,6 +1,6 @@
 import React, { useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { View, StyleSheet, PanResponder, GestureResponderEvent, LayoutChangeEvent, Platform } from 'react-native';
-import Svg, { Path, Defs, Pattern, Rect, Line, Circle } from 'react-native-svg';
+import Svg, { Path, Defs, Pattern, Rect, Circle } from 'react-native-svg';
 import { Stroke, Point } from '../types';
 import { speechService } from '../services/speechService';
 
@@ -15,6 +15,7 @@ interface DrawingCanvasProps {
   strokes: Stroke[];
   onStrokesChange: (strokes: Stroke[]) => void;
   onStrokeEnd?: () => void;
+  theme?: 'slate' | 'paper';
 }
 
 export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(({
@@ -23,6 +24,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(({
   strokes,
   onStrokesChange,
   onStrokeEnd,
+  theme = 'slate',
 }, ref) => {
   const [currentStroke, setCurrentStroke] = useState<Point[] | null>(null);
   const [canvasDimensions, setCanvasDimensions] = useState<{ width: number; height: number }>({
@@ -52,14 +54,17 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(({
           const ctx = canvas.getContext('2d');
           if (!ctx) return null;
 
-          // Crisp white background
+          // Crisp white background for vision/OCR analysis
           ctx.fillStyle = '#FFFFFF';
           ctx.fillRect(0, 0, width, height);
 
           // Render each stroke with smooth lines
           strokesRef.current.forEach((stroke) => {
             if (stroke.points.length === 0) return;
-            ctx.strokeStyle = stroke.color;
+
+            // Invert chalk colors if near white so OCR / Vision models can see clearly on white canvas
+            const isLightColor = stroke.color === '#FFFFFF' || stroke.color === '#F8FAFC' || stroke.color === '#F1F5F9';
+            ctx.strokeStyle = isLightColor ? '#0F172A' : stroke.color;
             ctx.lineWidth = stroke.width;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
@@ -67,7 +72,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(({
             ctx.beginPath();
             if (stroke.points.length === 1) {
               ctx.arc(stroke.points[0].x, stroke.points[0].y, stroke.width / 2, 0, Math.PI * 2);
-              ctx.fillStyle = stroke.color;
+              ctx.fillStyle = isLightColor ? '#0F172A' : stroke.color;
               ctx.fill();
             } else {
               ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
@@ -156,9 +161,15 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(({
     return d;
   };
 
+  const isSlate = theme === 'slate';
+  const dotColor = isSlate ? '#334155' : '#E2E8F0';
+
   return (
     <View
-      style={styles.container}
+      style={[
+        styles.container,
+        isSlate ? styles.slateContainer : styles.paperContainer,
+      ]}
       onLayout={handleLayout}
       {...panResponder.panHandlers}
     >
@@ -168,25 +179,25 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(({
         style={StyleSheet.absoluteFill}
       >
         <Defs>
-          {/* Faint notebook dot grid */}
+          {/* Subtle slate dot pattern */}
           <Pattern
             id="dotGrid"
             width={24}
             height={24}
             patternUnits="userSpaceOnUse"
           >
-            <Circle cx={12} cy={12} r={1.2} fill="#E2E8F0" />
+            <Circle cx={12} cy={12} r={1.2} fill={dotColor} />
           </Pattern>
         </Defs>
 
-        {/* Paper Background with subtle dot grid */}
+        {/* Slate / Chalkboard Surface */}
         <Rect
           width={canvasDimensions.width}
           height={canvasDimensions.height}
           fill="url(#dotGrid)"
         />
 
-        {/* COMPLETED DRAWN STROKES */}
+        {/* COMPLETED CHALK STROKES */}
         {strokes.map((stroke) => (
           <Path
             key={stroke.id}
@@ -199,7 +210,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(({
           />
         ))}
 
-        {/* ACTIVE STROKE UNDER FINGER/PEN */}
+        {/* ACTIVE CHALK STROKE */}
         {currentStroke && currentStroke.length > 0 && (
           <Path
             d={pointsToSvgPath(currentStroke)}
@@ -218,15 +229,22 @@ export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-    borderWidth: 2,
-    borderColor: '#E2E8F0',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 14,
+    elevation: 6,
+    borderWidth: 4,
     overflow: 'hidden',
+  },
+  slateContainer: {
+    backgroundColor: '#0F172A', // Deep slate chalkboard
+    borderColor: '#334155',     // Sturdy slate frame
+    shadowColor: '#000000',
+  },
+  paperContainer: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E2E8F0',
+    shadowColor: '#3B82F6',
   },
 });

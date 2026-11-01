@@ -180,6 +180,22 @@ class SpeechService {
   }
 
   /**
+   * Directly read what is written on the slate without long lectures
+   * e.g. "A", "J", "Cat", "7"
+   */
+  public async readSlateContent(
+    content: { textToRead: string; phonicsSound?: string },
+    mode: 'direct' | 'phonics' = 'direct',
+    onDone?: () => void
+  ): Promise<void> {
+    if (mode === 'phonics' && content.phonicsSound) {
+      await this.speak(`${content.textToRead}. ${content.phonicsSound}`, onDone);
+    } else {
+      await this.speak(content.textToRead, onDone);
+    }
+  }
+
+  /**
    * Speak the explanation of the recognized drawing
    */
   public async speakExplanation(

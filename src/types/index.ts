@@ -10,6 +10,14 @@ export interface Stroke {
   width: number;
 }
 
+export interface SlateContent {
+  textToRead: string;       // The exact text read aloud: "A", "J", "Cat", "7", "Sun"
+  phonicsSound?: string;    // Short phonics: "A says ah", "J says juh"
+  displayLabel: string;     // e.g. "Letter A", "Letter J", "Cat", "Number 5"
+  emoji: string;            // e.g. "🅰️", "🧃", "🐱", "5️⃣"
+  category: 'letter' | 'number' | 'word' | 'drawing' | 'empty';
+}
+
 export interface DrawingExplanation {
   name: string;
   emoji: string;

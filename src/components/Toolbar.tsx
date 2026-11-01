@@ -11,19 +11,18 @@ interface ToolbarProps {
   onClear: () => void;
   onUndo: () => void;
   canUndo: boolean;
-  onExplain: () => void;
-  isAnalyzing: boolean;
+  onReadSlate: () => void;
+  isReading: boolean;
 }
 
-const PALETTE = [
-  { name: 'Dark', hex: '#1E293B', icon: '⚫' },
-  { name: 'Red', hex: '#EF4444', icon: '🔴' },
-  { name: 'Blue', hex: '#3B82F6', icon: '🔵' },
-  { name: 'Green', hex: '#10B981', icon: '🟢' },
-  { name: 'Orange', hex: '#F97316', icon: '🟠' },
-  { name: 'Purple', hex: '#8B5CF6', icon: '🟣' },
-  { name: 'Yellow', hex: '#EAB308', icon: '🟡' },
-  { name: 'Eraser', hex: '#FFFFFF', icon: '🧽' },
+const CHALK_PALETTE = [
+  { name: 'White', hex: '#FFFFFF', icon: '⚪' },
+  { name: 'Yellow', hex: '#FDE047', icon: '🟡' },
+  { name: 'Cyan', hex: '#38BDF8', icon: '🔵' },
+  { name: 'Pink', hex: '#F472B6', icon: '🌸' },
+  { name: 'Mint', hex: '#4ADE80', icon: '🟢' },
+  { name: 'Orange', hex: '#FB923C', icon: '🟠' },
+  { name: 'Sponge', hex: '#1E293B', icon: '🧽' },
 ];
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -34,27 +33,27 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onClear,
   onUndo,
   canUndo,
-  onExplain,
-  isAnalyzing,
+  onReadSlate,
+  isReading,
 }) => {
   return (
     <View style={styles.container}>
-      {/* MAIN ACTION BAR: Explain Drawing, Undo, Clear */}
+      {/* MAIN ACTION BAR: Read Slate, Undo, Wipe Slate */}
       <View style={styles.actionRow}>
-        {/* BIG EXPLAIN DRAWING BUTTON */}
+        {/* BIG READ SLATE BUTTON */}
         <TouchableOpacity
-          style={[styles.bigActionButton, isAnalyzing && styles.buttonDisabled]}
+          style={[styles.bigActionButton, isReading && styles.buttonDisabled]}
           onPress={() => {
             speechService.resumeAudioContext();
             soundEffects.playSuccess();
-            onExplain();
+            onReadSlate();
           }}
-          disabled={isAnalyzing}
+          disabled={isReading}
           activeOpacity={0.8}
         >
-          <Text style={styles.buttonEmoji}>🪄</Text>
+          <Text style={styles.buttonEmoji}>🔊</Text>
           <Text style={styles.actionButtonText}>
-            {isAnalyzing ? 'Analyzing...' : 'Explain My Drawing'}
+            {isReading ? 'Reading Slate...' : 'Read Slate'}
           </Text>
         </TouchableOpacity>
 
@@ -63,6 +62,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           style={[styles.iconButton, !canUndo && styles.buttonDisabled]}
           onPress={() => {
             if (canUndo) {
+              speechService.resumeAudioContext();
               soundEffects.playPop();
               onUndo();
             }
@@ -74,58 +74,61 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <Text style={styles.iconButtonLabel}>Undo</Text>
         </TouchableOpacity>
 
-        {/* CLEAR NOTEPAD BUTTON */}
+        {/* WIPE SLATE BUTTON */}
         <TouchableOpacity
-          style={[styles.iconButton, styles.clearButton]}
+          style={[styles.iconButton, styles.wipeButton]}
           onPress={() => {
+            speechService.resumeAudioContext();
             soundEffects.playWhoosh();
             onClear();
           }}
           activeOpacity={0.8}
         >
-          <Text style={styles.smallEmoji}>🗑️</Text>
-          <Text style={styles.iconButtonLabel}>Clear</Text>
+          <Text style={styles.smallEmoji}>🧹</Text>
+          <Text style={styles.iconButtonLabel}>Wipe</Text>
         </TouchableOpacity>
       </View>
 
-      {/* TOOLS ROW: Colors & Thickness */}
+      {/* CHALK TOOLS: Colors & Thickness */}
       <View style={styles.toolRow}>
-        {/* Color Palette */}
+        {/* Chalk Palette */}
         <View style={styles.paletteContainer}>
-          {PALETTE.map((item) => {
+          {CHALK_PALETTE.map((item) => {
             const isSelected = currentColor === item.hex;
-            const isEraser = item.hex === '#FFFFFF';
+            const isSponge = item.name === 'Sponge';
             return (
               <TouchableOpacity
                 key={item.name}
                 style={[
-                  styles.colorSwatch,
+                  styles.chalkSwatch,
                   { backgroundColor: item.hex },
                   isSelected && styles.selectedSwatch,
-                  isEraser && styles.eraserSwatch,
+                  isSponge && styles.spongeSwatch,
                 ]}
                 onPress={() => {
+                  speechService.resumeAudioContext();
                   soundEffects.playPop();
                   onSelectColor(item.hex);
                 }}
                 activeOpacity={0.8}
               >
-                {isSelected && <Text style={styles.swatchCheck}>✓</Text>}
-                {isEraser && !isSelected && <Text style={styles.eraserIcon}>🧽</Text>}
+                {isSelected && !isSponge && <Text style={styles.swatchCheck}>✓</Text>}
+                {isSponge && <Text style={styles.spongeIcon}>🧽</Text>}
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* Brush Sizes */}
+        {/* Chalk Sizes */}
         <View style={styles.sizeContainer}>
-          {[8, 16, 26].map((size) => {
+          {[10, 18, 28].map((size) => {
             const isSelected = strokeWidth === size;
             return (
               <TouchableOpacity
                 key={`size-${size}`}
                 style={[styles.sizeButton, isSelected && styles.sizeButtonSelected]}
                 onPress={() => {
+                  speechService.resumeAudioContext();
                   soundEffects.playPop();
                   onSelectStrokeWidth(size);
                 }}
@@ -135,10 +138,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                   style={[
                     styles.sizeDot,
                     {
-                      width: size * 0.7,
-                      height: size * 0.7,
-                      borderRadius: (size * 0.7) / 2,
-                      backgroundColor: currentColor === '#FFFFFF' ? '#94A3B8' : currentColor,
+                      width: size * 0.6,
+                      height: size * 0.6,
+                      borderRadius: (size * 0.6) / 2,
+                      backgroundColor: currentColor === '#1E293B' ? '#94A3B8' : currentColor,
                     },
                   ]}
                 />
@@ -153,12 +156,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#0F172A',
     borderRadius: 22,
     padding: 12,
-    marginVertical: 6,
+    marginVertical: 4,
     borderWidth: 2,
-    borderColor: '#E2E8F0',
+    borderColor: '#334155',
     gap: 10,
   },
   actionRow: {
@@ -174,12 +177,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 18,
-    backgroundColor: '#6366F1',
+    backgroundColor: '#10B981',
     gap: 8,
-    elevation: 3,
-    shadowColor: '#6366F1',
+    elevation: 4,
+    shadowColor: '#10B981',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 6,
   },
   buttonDisabled: {
@@ -191,8 +194,8 @@ const styles = StyleSheet.create({
   actionButtonText: {
     color: '#FFFFFF',
     fontWeight: '900',
-    fontSize: 15,
-    letterSpacing: 0.2,
+    fontSize: 16,
+    letterSpacing: 0.3,
   },
   iconButton: {
     alignItems: 'center',
@@ -200,14 +203,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1E293B',
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: '#334155',
     minWidth: 58,
   },
-  clearButton: {
-    backgroundColor: '#FEE2E2',
-    borderColor: '#FECACA',
+  wipeButton: {
+    backgroundColor: '#334155',
+    borderColor: '#475569',
   },
   smallEmoji: {
     fontSize: 18,
@@ -215,7 +218,7 @@ const styles = StyleSheet.create({
   iconButtonLabel: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#475569',
+    color: '#94A3B8',
     marginTop: 2,
   },
   toolRow: {
@@ -229,7 +232,7 @@ const styles = StyleSheet.create({
     gap: 8,
     flexWrap: 'wrap',
   },
-  colorSwatch: {
+  chalkSwatch: {
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -238,37 +241,36 @@ const styles = StyleSheet.create({
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2,
     shadowRadius: 2,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
   selectedSwatch: {
+    borderColor: '#38BDF8',
     borderWidth: 3,
-    borderColor: '#0F172A',
     transform: [{ scale: 1.15 }],
   },
-  eraserSwatch: {
+  spongeSwatch: {
     borderWidth: 2,
-    borderColor: '#CBD5E1',
+    borderColor: '#64748B',
   },
   swatchCheck: {
-    color: '#FFFFFF',
+    color: '#0F172A',
     fontWeight: '900',
-    fontSize: 15,
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 1,
+    fontSize: 16,
   },
-  eraserIcon: {
-    fontSize: 15,
+  spongeIcon: {
+    fontSize: 16,
   },
   sizeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1E293B',
     padding: 3,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#334155',
     gap: 3,
   },
   sizeButton: {
@@ -279,7 +281,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sizeButtonSelected: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#334155',
   },
   sizeDot: {
     minWidth: 4,

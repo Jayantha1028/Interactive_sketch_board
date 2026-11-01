@@ -1,4 +1,4 @@
-import { DrawingExplanation, Stroke, Point } from '../types';
+import { DrawingExplanation, Stroke, Point, SlateContent } from '../types';
 import { DOODLE_DICTIONARY } from '../data/doodleDictionary';
 
 class GeminiVisionService {
@@ -97,6 +97,106 @@ Respond ONLY with a valid JSON object matching this schema, with no markdown cod
       console.warn('Gemini vision analysis failed, falling back to smart recognizer:', err);
       return null;
     }
+  }
+
+  /**
+   * Slate Mode: Recognizes handwritten letters, numbers, or drawings
+   * and extracts the exact content to be read aloud (e.g. "A", "J", "Cat", "7")
+   */
+  public async recognizeSlate(
+    strokes: Stroke[],
+    width: number,
+    height: number,
+    base64Png?: string | null
+  ): Promise<SlateContent> {
+    if (strokes.length === 0) {
+      return {
+        textToRead: 'Slate is clean',
+        displayLabel: 'Empty Slate',
+        emoji: '📝',
+        category: 'empty',
+      };
+    }
+
+    // 1. Try Gemini Vision if API key is present and image is available
+    if (this.hasApiKey() && base64Png) {
+      try {
+        const cleanBase64 = base64Png.replace(/^data:image\/[a-z]+;base64,/, '');
+        const prompt = `You are a reading engine for a child's digital slate.
+Look at the handwriting or sketch on this slate. Identify the exact letter (e.g. 'A', 'J', 'b'), number (e.g. '1', '7'), word (e.g. 'CAT', 'DOG'), or simple sketch (e.g. 'Cat', 'Sun', 'Star') written on the slate.
+Respond ONLY with a valid JSON object with NO markdown formatting:
+{
+  "textToRead": "The exact word or letter to read aloud (e.g. 'A', 'J', 'Cat', 'Hello', '7', 'Star')",
+  "phonicsSound": "Short phonics sound if a letter (e.g. 'A says ah', 'J says juh') or empty string",
+  "displayLabel": "Short title to show on slate (e.g. 'Letter A', 'Letter J', 'Cat', 'Number 7')",
+  "emoji": "Single cute emoji (e.g. '🅰️', '🧃', '🐱')",
+  "category": "letter"
+}`;
+
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${this.apiKey}`;
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { inline_data: { mime_type: 'image/png', data: cleanBase64 } },
+                  { text: prompt },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              responseMimeType: 'application/json',
+            },
+          }),
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          const raw = json.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (raw) {
+            const parsed = JSON.parse(raw) as SlateContent;
+            return parsed;
+          }
+        }
+      } catch (e) {
+        console.warn('Gemini slate read error, falling back to offline recognizer:', e);
+      }
+    }
+
+    // 2. High-Accuracy Offline Recognizer
+    const explanation = this.recognizeOffline(strokes, width, height);
+
+    // Extract clean readable text
+    let textToRead = explanation.name;
+    let phonicsSound = '';
+    let category: 'letter' | 'number' | 'word' | 'drawing' = 'drawing';
+
+    if (explanation.category === 'Alphabet') {
+      // e.g. "Letter A" -> "A", "Letter J" -> "J"
+      const letterChar = explanation.name.replace(/^Letter\s+/i, '').trim();
+      textToRead = letterChar;
+      phonicsSound = `${letterChar} says ${explanation.soundWord || 'ah'}`;
+      category = 'letter';
+    } else if (explanation.category === 'Number') {
+      // e.g. "Number 1" -> "1"
+      const numChar = explanation.name.replace(/^Number\s+/i, '').trim();
+      textToRead = numChar;
+      category = 'number';
+    } else {
+      textToRead = explanation.name;
+      category = 'drawing';
+    }
+
+    return {
+      textToRead,
+      phonicsSound,
+      displayLabel: explanation.name,
+      emoji: explanation.emoji,
+      category,
+    };
   }
 
   /**

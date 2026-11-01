@@ -8,17 +8,17 @@ interface HeaderProps {
   onSelectInspiration: (word: string) => void;
 }
 
-const INSPIRATION_IDEAS = [
+const SLATE_IDEAS = [
+  { label: 'A', emoji: '🅰️' },
+  { label: 'J', emoji: '🧃' },
+  { label: 'B', emoji: '🅱️' },
+  { label: '5', emoji: '5️⃣' },
   { label: 'Cat', emoji: '🐱' },
   { label: 'Sun', emoji: '☀️' },
-  { label: 'Car', emoji: '🚗' },
-  { label: 'Apple', emoji: '🍎' },
-  { label: 'House', emoji: '🏠' },
   { label: 'Star', emoji: '⭐' },
+  { label: 'Car', emoji: '🚗' },
+  { label: 'Dog', emoji: '🐶' },
   { label: 'Tree', emoji: '🌳' },
-  { label: 'Fish', emoji: '🐟' },
-  { label: 'Heart', emoji: '❤️' },
-  { label: 'Boat', emoji: '⛵' },
 ];
 
 export const Header: React.FC<HeaderProps> = ({
@@ -30,10 +30,10 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Top row: Title and Settings */}
       <View style={styles.topRow}>
         <View style={styles.titleGroup}>
-          <Text style={styles.appEmoji}>📝</Text>
+          <Text style={styles.appEmoji}>🖍️</Text>
           <View>
-            <Text style={styles.title}>DoodlePad</Text>
-            <Text style={styles.subtitle}>Draw anything & hear the explanation</Text>
+            <Text style={styles.title}>Magic Slate</Text>
+            <Text style={styles.subtitle}>Write on the slate to hear it read aloud</Text>
           </View>
         </View>
 
@@ -43,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
             onPress={() => {
               speechService.resumeAudioContext();
               soundEffects.playSuccess();
-              speechService.speak('Welcome to DoodlePad! Draw any letter, number, or picture!');
+              speechService.speak('Welcome to your Magic Slate! Write any letter, number, or word to hear it!');
             }}
             activeOpacity={0.8}
           >
@@ -65,19 +65,20 @@ export const Header: React.FC<HeaderProps> = ({
         </View>
       </View>
 
-      {/* Inspiration scroll row: "Try drawing:" */}
+      {/* Quick Try row */}
       <View style={styles.inspirationRow}>
-        <Text style={styles.inspirationLabel}>Try drawing:</Text>
+        <Text style={styles.inspirationLabel}>Try writing:</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.ideasScroll}
         >
-          {INSPIRATION_IDEAS.map((item) => (
+          {SLATE_IDEAS.map((item) => (
             <TouchableOpacity
               key={item.label}
               style={styles.ideaChip}
               onPress={() => {
+                speechService.resumeAudioContext();
                 soundEffects.playPop();
                 onSelectInspiration(item.label);
               }}
@@ -95,12 +96,12 @@ export const Header: React.FC<HeaderProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0F172A',
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 6,
+    paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#1E293B',
   },
   topRow: {
     flexDirection: 'row',
@@ -119,13 +120,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#0F172A',
+    color: '#F8FAFC',
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#64748B',
+    color: '#94A3B8',
   },
   topRightActions: {
     flexDirection: 'row',
@@ -136,12 +137,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#1E293B',
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#C7D2FE',
+    borderColor: '#334155',
   },
   testAudioIcon: {
     fontSize: 13,
@@ -149,15 +150,17 @@ const styles = StyleSheet.create({
   testAudioText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#4F46E5',
+    color: '#38BDF8',
   },
   settingsButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#1E293B',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   settingsIcon: {
     fontSize: 17,
@@ -171,7 +174,7 @@ const styles = StyleSheet.create({
   inspirationLabel: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#94A3B8',
+    color: '#64748B',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -182,19 +185,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#1E293B',
     paddingVertical: 4,
     paddingHorizontal: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#334155',
   },
   ideaEmoji: {
     fontSize: 13,
   },
   ideaText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#475569',
+    fontWeight: '800',
+    color: '#E2E8F0',
   },
 });

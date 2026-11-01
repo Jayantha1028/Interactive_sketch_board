@@ -8,7 +8,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Stroke, DrawingExplanation } from './src/types';
+import { Stroke, SlateContent } from './src/types';
 import { speechService } from './src/services/speechService';
 import { soundEffects } from './src/services/soundEffects';
 import { geminiService } from './src/services/geminiService';
@@ -16,104 +16,109 @@ import { DOODLE_DICTIONARY } from './src/data/doodleDictionary';
 import { Header } from './src/components/Header';
 import { DrawingCanvas, DrawingCanvasRef } from './src/components/DrawingCanvas';
 import { Toolbar } from './src/components/Toolbar';
-import { ExplanationCard } from './src/components/ExplanationCard';
+import { SlateReadout } from './src/components/SlateReadout';
 import { SettingsModal } from './src/components/SettingsModal';
 
 export default function App() {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const canvasRef = useRef<DrawingCanvasRef>(null);
 
-  // Drawing state
+  // Slate drawing state (default to white chalk)
   const [strokes, setStrokes] = useState<Stroke[]>([]);
-  const [currentColor, setCurrentColor] = useState<string>('#1E293B');
-  const [strokeWidth, setStrokeWidth] = useState<number>(16);
+  const [currentColor, setCurrentColor] = useState<string>('#FFFFFF');
+  const [strokeWidth, setStrokeWidth] = useState<number>(18);
 
-  // Recognition & Audio Explanation state
-  const [currentExplanation, setCurrentExplanation] = useState<DrawingExplanation | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  // Reading & Slate state
+  const [currentContent, setCurrentContent] = useState<SlateContent | null>(null);
+  const [isReading, setIsReading] = useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
+  const [readingMode, setReadingMode] = useState<'direct' | 'phonics'>('direct');
   const [speechSpeed, setSpeechSpeed] = useState<'slow' | 'normal'>('normal');
 
   // Modals
   const [showSettings, setShowSettings] = useState<boolean>(false);
 
-  // Undo last stroke
+  // Undo last chalk stroke
   const handleUndo = () => {
     setStrokes((prev) => prev.slice(0, prev.length - 1));
   };
 
-  // Clear notepad
-  const handleClear = () => {
+  // Wipe / clean the slate
+  const handleWipe = () => {
     setStrokes([]);
-    setCurrentExplanation(null);
+    setCurrentContent(null);
     speechService.stop();
   };
 
-  // Speak the recognized explanation
-  const handleSpeakCurrent = (explanation: DrawingExplanation) => {
+  // Read out the content of the slate
+  const handleReadContent = (content: SlateContent, mode = readingMode) => {
     setIsSpeaking(true);
-    speechService.speakExplanation(explanation, () => {
+    speechService.readSlateContent(content, mode, () => {
       setIsSpeaking(false);
     });
   };
 
-  // Analyze sketch & produce audio explanation
-  const handleExplain = async () => {
-    // Synchronously resume Web Audio and SpeechSynthesis inside the user touch event
+  // Analyze & read the slate
+  const handleReadSlate = async () => {
     speechService.resumeAudioContext();
 
     if (strokes.length === 0) {
       soundEffects.playPop();
-      const emptyItem: DrawingExplanation = {
-        name: 'Empty Pad',
+      const emptyItem: SlateContent = {
+        textToRead: 'Slate is clean',
+        displayLabel: 'Empty Slate',
         emoji: '📝',
-        spelling: 'D - R - A - W',
-        explanation: 'Your sketch pad is empty! Use your finger to draw anything you like, like a letter A, letter J, or a cat!',
-        category: 'Pad',
+        category: 'empty',
       };
-      setCurrentExplanation(emptyItem);
-      handleSpeakCurrent(emptyItem);
+      setCurrentContent(emptyItem);
+      handleReadContent(emptyItem);
       return;
     }
 
-    setIsAnalyzing(true);
+    setIsReading(true);
 
     try {
-      let result: DrawingExplanation | null = null;
+      const base64 = canvasRef.current?.getCanvasImageBase64();
+      const dims = canvasRef.current?.getDimensions() || { width: windowWidth, height: 400 };
 
-      // 1. If Gemini API key is configured and rasterization is available, try AI Vision
-      if (geminiService.hasApiKey() && canvasRef.current) {
-        const base64 = canvasRef.current.getCanvasImageBase64();
-        if (base64) {
-          result = await geminiService.recognizeDrawingWithAI(base64);
-        }
-      }
+      // Recognize handwritten letter, number, or drawing
+      const result = await geminiService.recognizeSlate(
+        strokes,
+        dims.width,
+        dims.height,
+        base64
+      );
 
-      // 2. If no AI result, use smart on-device recognition engine
-      if (!result) {
-        const dims = canvasRef.current?.getDimensions() || { width: windowWidth, height: 400 };
-        result = geminiService.recognizeOffline(strokes, dims.width, dims.height);
-      }
-
-      setCurrentExplanation(result);
+      setCurrentContent(result);
       soundEffects.playSuccess();
 
-      // Speak explanation immediately
-      handleSpeakCurrent(result);
+      // Read aloud directly without delay
+      handleReadContent(result);
     } catch (err) {
-      console.warn('Recognition error:', err);
+      console.warn('Slate reading error:', err);
     } finally {
-      setIsAnalyzing(false);
+      setIsReading(false);
     }
   };
 
   // Quick Inspiration selection
   const handleSelectInspiration = (word: string) => {
+    speechService.resumeAudioContext();
     const key = word.toLowerCase();
-    const item = DOODLE_DICTIONARY[key];
+    const letterKey = `letter-${key}`;
+    const numberKey = `number-${key}`;
+    const item = DOODLE_DICTIONARY[letterKey] || DOODLE_DICTIONARY[numberKey] || DOODLE_DICTIONARY[key];
+
     if (item) {
-      setCurrentExplanation(item);
-      speechService.speak(`Can you draw a ${item.name}? ${item.explanation}`);
+      const content: SlateContent = {
+        textToRead: item.category === 'Alphabet' ? word.toUpperCase() : item.name,
+        phonicsSound: item.soundWord,
+        displayLabel: item.name,
+        emoji: item.emoji,
+        category: item.category === 'Alphabet' ? 'letter' : 'drawing',
+      };
+      setCurrentContent(content);
+      handleReadContent(content);
     }
   };
 
@@ -130,7 +135,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
 
       {/* TOP HEADER */}
       <Header
@@ -139,7 +144,27 @@ export default function App() {
       />
 
       <View style={styles.contentContainer}>
-        {/* SKETCH NOTEPAD CANVAS */}
+        {/* SLATE READOUT BADGE */}
+        <SlateReadout
+          content={currentContent}
+          isReading={isReading}
+          isSpeaking={isSpeaking}
+          readingMode={readingMode}
+          onToggleReadingMode={() => {
+            const nextMode = readingMode === 'direct' ? 'phonics' : 'direct';
+            setReadingMode(nextMode);
+            if (currentContent) {
+              handleReadContent(currentContent, nextMode);
+            }
+          }}
+          onRepeatAudio={() => {
+            if (currentContent) {
+              handleReadContent(currentContent);
+            }
+          }}
+        />
+
+        {/* SLATE CHALKBOARD CANVAS */}
         <View style={styles.canvasWrapper}>
           <DrawingCanvas
             ref={canvasRef}
@@ -147,33 +172,21 @@ export default function App() {
             strokeWidth={strokeWidth}
             strokes={strokes}
             onStrokesChange={setStrokes}
+            theme="slate"
           />
         </View>
 
-        {/* AUDIO EXPLANATION CARD */}
-        <ExplanationCard
-          explanation={currentExplanation}
-          isAnalyzing={isAnalyzing}
-          isSpeaking={isSpeaking}
-          onSpeak={() => {
-            if (currentExplanation) {
-              handleSpeakCurrent(currentExplanation);
-            }
-          }}
-          onClear={handleClear}
-        />
-
-        {/* BOTTOM DRAWING TOOLBAR */}
+        {/* SLATE TOOLBAR */}
         <Toolbar
           currentColor={currentColor}
           onSelectColor={setCurrentColor}
           strokeWidth={strokeWidth}
           onSelectStrokeWidth={setStrokeWidth}
-          onClear={handleClear}
+          onClear={handleWipe}
           onUndo={handleUndo}
           canUndo={strokes.length > 0}
-          onExplain={handleExplain}
-          isAnalyzing={isAnalyzing}
+          onReadSlate={handleReadSlate}
+          isReading={isReading}
         />
       </View>
 
@@ -191,7 +204,7 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#020617', // Deep chalkboard background
     paddingTop: Platform.OS === 'android' ? RNStatusBar.currentHeight : 0,
   },
   contentContainer: {
