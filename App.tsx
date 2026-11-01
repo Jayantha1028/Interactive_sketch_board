@@ -162,6 +162,17 @@ export default function App() {
               handleReadContent(currentContent);
             }
           }}
+          onSelectAlternative={(alt) => {
+            const updated: SlateContent = {
+              textToRead: alt.textToRead,
+              displayLabel: alt.displayLabel,
+              emoji: alt.emoji,
+              phonicsSound: alt.phonicsSound,
+              category: 'letter',
+            };
+            setCurrentContent(updated);
+            handleReadContent(updated);
+          }}
         />
 
         {/* SLATE CHALKBOARD CANVAS */}

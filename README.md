@@ -63,10 +63,12 @@ flowchart LR
 
 ## 🧠 Recognition Engine
 
-- **High-Accuracy Offline Geometric OCR**:
-  - **Letter "A"**: Analyzes triangular A-frame (narrow top apex, wide bottom spread, horizontal crossbar). Never confused with a tree!
-  - **Letter "J"**: Analyzes top vertical descent and bottom leftward hook curl. Never confused with a cat!
-  - Full alphabet (**A–Z**), digits (**0–9**), and classic childhood doodles (Cat, Dog, Sun, Star, Tree, House, Car, Heart, Flower).
+- **High-Accuracy $P Point-Cloud Matcher (Offline)**:
+  - Replaces fragile if-else geometric chains with the mathematical **$P Point-Cloud Recognizer** (Wobbrock, Vatavu & Anthony).
+  - **Stroke-Order Invariant**: Whether 'A' is drawn in 1, 2, or 3 strokes, or whether legs or crossbars are drawn first, the spatial point cloud matches template **'A'**.
+  - **Stroke-Direction & Count Invariant**: Resamples strokes to 32 equidistant points, scales to $[0, 1] \times [0, 1]$ preserving aspect ratio, and symmetrically computes the Hausdorff distance against canonical letter and doodle templates.
+  - **"Did You Mean?" Alternative Chips**: Displays the top 3 alternative candidate matches right below the readout badge, allowing children to tap any alternative for instant 1-touch correction.
+  - Full template coverage: **A–Z**, **0–9**, and classic doodles (Cat, Dog, Sun, Star, Tree, House, Car, Heart).
 - **Multimodal AI Vision (Google Gemini 2.5 Flash)**:
   - Supports open-vocabulary handwriting and complex sketch recognition when a free Gemini API key is configured.
 

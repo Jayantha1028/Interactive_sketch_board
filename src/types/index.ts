@@ -16,6 +16,13 @@ export interface SlateContent {
   displayLabel: string;     // e.g. "Letter A", "Letter J", "Cat", "Number 5"
   emoji: string;            // e.g. "🅰️", "🧃", "🐱", "5️⃣"
   category: 'letter' | 'number' | 'word' | 'drawing' | 'empty';
+  score?: number;
+  alternatives?: Array<{
+    textToRead: string;
+    displayLabel: string;
+    emoji: string;
+    phonicsSound?: string;
+  }>;
 }
 
 export interface DrawingExplanation {
